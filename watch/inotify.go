@@ -91,8 +91,16 @@ func (fw *InotifyFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChange
 					return
 				}
 			case <-t.Dying():
-				RemoveWatch(fw.Filename)
-				return
+				if WatchCounter[fw.Filename] <= 1 {
+					RemoveWatch(fw.Filename)
+					delete(WatchCounter,fw.Filename)
+					return
+				} else {
+					WatchCountermutx.Lock()
+					WatchCounter[fw.Filename]--
+					WatchCountermutx.Unlock()
+					return
+				}
 			}
 
 			switch {

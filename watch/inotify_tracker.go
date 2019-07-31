@@ -37,8 +37,9 @@ func (this *watchInfo) isCreate() bool {
 
 var (
 	// globally shared InotifyTracker; ensures only one fsnotify.Watcher is used
-	shared *InotifyTracker
-
+	shared           *InotifyTracker
+	WatchCounter     = make(map[string]int, 0)
+	WatchCountermutx sync.Mutex
 	// these are used to ensure the shared InotifyTracker is run exactly once
 	once  = sync.Once{}
 	goRun = func() {
@@ -76,9 +77,11 @@ func WatchCreate(fname string) error {
 func watch(winfo *watchInfo) error {
 	// start running the shared InotifyTracker if not already running
 	once.Do(goRun)
-
 	winfo.fname = filepath.Clean(winfo.fname)
 	shared.watch <- winfo
+	WatchCountermutx.Lock()
+	WatchCounter[winfo.fname]++
+	WatchCountermutx.Unlock()
 	return <-shared.error
 }
 
